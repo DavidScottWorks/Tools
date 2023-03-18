@@ -1,0 +1,131 @@
+nmap <scan types> <options> <target specs -name/IP/URL/etc>
+
+sudo apt update && sudo apt install nmap   #update nmap and its scripts
+-------------------
+
+GOOD INITIAL SCANS
+
+nmap -p- -T5 <target IP> -v   # initial scan, all ports, lots of threads, verbose; will return open ports info; very noisy - NahamSec
+
+nmap -p <specific port #'s> -A <target IP> -v   # second scan; aggessive; returns more info on the chosen ports - NahamSec
+
+--------------------------
+
+-A   #aggressive; enables OS & version detection, script scanning and traceroute
+
+-sn <ip ranges>   #ping (ICMP) sweep; disables port scans; also sends a TCP SYN to p443 and TCP ACK to p80
+
+-v   #increase verbosity -- more v's equal more info
+
+MAIN SCAN TYPES                                   
+-sT   #TCP Connection; full 3-way handshake; most often logged by IDS
+-sS   #TCP SYN only; returns a RST to the targets SYN/ACK; often not logged by IDS; faster;
+        #default scan when run with sudo permissions; could bring down unstable services
+-sU   #UDP; very slow, feedback not as reliable
+	best to run with --top-ports <number> to limit number of ports its trying to connect to
+
+LESS COMMON SCANS BUT VERY STEALTHY
+target should assume the packet is a mistake and respond with a RST; not always reliable as most IDS are aware of these scan tricks
+-sN   #TCP Null - packet sent with no flags
+-sF   #TCP Fin flag only
+-sX   #Xmas scan; sends a malformed TCP packet with PSH, URG & FIN set
+
+
+TECHNIQUE OPTIONS
+-O   #OS detect                                     
+-sV   #scan open ports for services & versions; auto-runs the version category scripts
+-sC  #scan using all the default scripts; equivalent to --script-default 
+	# some of these scripts are intrusive and should not be run against a target without permission
+
+TARGETING OPTIONS
+-iL <filename>         #designate a file that contains a list of targets to scan
+-iR <number>          #choose random targets
+--exclude <host>     #should be self-explanatory
+--excludefile <file name>
+
+-p<port numbers>   #scan only these ports; -p80 , -p23-1000, -p23,80,445
+-p-<target info>       #scan all ports on the target
+--exclude-ports<numbers>
+
+
+FIREWALL EVASION TECHNIQUES
+-Pn   #assume the target is alive and scan the target's ports no matter what; this gets around Windows default firewall not returning ping scans; can potentially take a long time
+
+-f   #fragment the packets to reduce firewall or IDS detections; specify once to break into 8 byte frags, twice for 16 byte
+
+--mtu <number>   #alternate to -f ; specifies max transmission size; must be multiple of 8
+
+--scan-delay <time>ms   #adds a delay between packets
+
+--badsum   #generates invalid checksums in packets; could trigger firewall/IDS to respond
+
+--send-eth   #bypass my IP layer and send raw ethernet frames
+
+-D <decoy1>,<decoy2>,ME, <etc>   #make scan appear to be coming from multiple IP's; make sure the used IP are up and running; ISP's may filter out the spoofs; 
+	#ME specifies where your real IP is in the list, otherwise it's random; putting it after position 6 may keep it from being spotted at all
+	#RND will generate a random, non-reserved IP address
+
+-g <port number>   #send packets from a specific port to spoof traffic type, such as making the scan look like an FTP or DNS request
+
+--data-length <number>   #appends random data to the end of the packet; may make scan packets less noticeable as they don't fit the standard
+
+--spoof-mac <MAC address | prefix | vendor name>
+	#specifiy MAC as 0 to insert completely random MAC
+
+
+TIMING
+-T<0-5>   #set scan speed; faster is noisier
+
+OUTPUT THE SCAN RESULTS
+-oA                   #save results in normal, XML and grepable formats
+-oN/-oX/-oG  #choose one - save in normal / XML / grep format
+-v                      #increase verbosity; more v = more verbose; vv, vvv, ect
+--open             #only report on open ports
+
+USING SCRIPTS  nmap --script-help <script name>
+local default script storage:   /usr/share/nmap/scripts
+scripts list text file:   /usr/share/nmap/scripts/script.db
+	#just a text file; fully grep-able and ls-able
+
+USING SCRIPTS
+nmap --script=<script category | script name | directory> 
+		#add multiple scripts by comma separation
+	--script-args <args>   #provide arguments to a scripts
+	--script-args-file <filename>
+	--script "http-*"   #will run all 'http-<whatever>' scripts
+	--script "not intrusive"  #runs everything except intrusive
+	--script "default and safe"
+
+Script Categories -- https://nmap.org/book/nse-usage.html
+default  --run with using -sC or -A options but can be run explicity
+	ident-owners (determines username running remote services)
+	http-auth (get authen scheme and 'realm of web' sites requiring authen)
+	ftp-anon (tests if FTP allows anon access)
+safe  --won't affect the target ; least intrusive -- ssh-hostkey , html-title
+intrusive  --likely to crash the target, use a lot of resources or be seen as malicious
+	http-open-proxy (attempts to use target as an HTTP proxy)
+	snmp-brute  (tries to guess SNMP community string)
+vuln   --scan for specific vulns -- realvnc-auth-bypass , afp-path-vuln                                                    
+exploit  --attempt to exploit a vuln  -- jdwp-exec , http-shellshock
+auth   --attempt to bypass authen for services 
+	ex: x11-access , ftp-anon , oracle-enum-users       
+brute  --attempt to brute force credentials; scripts for dozens of protocols
+	http-brute , oracle-brute , snmp-brute , etc
+discovery  --attempt to query services for more network info
+	html-title (get title of web sites' root path)
+	smb-enum-shares (get Windows shares)
+	snmp-sysdescr (get system details via SNMP)
+broadcast  --dicscovery of hosts not listed on CLI by broadcasting on local network
+	newtargets arg auto-adds these hosts to scanning list
+dos  --may cause denial of service; sometime crashes target services
+external  --may send data to third-parties who may keep records of the connection -- whois-ip
+fuzzer  --sends packets with fuzzed fields in find bugs and vuln; slow and bandwidth intensive
+	dns-fuzz
+malware  --tests if target is infected with malware or backdoors
+	smtp-strangeport (watches for SMTP running on unusual ports)
+	auth-spoof (detects identd spoofing deamons)
+
+Scripts
+http-put   #used to upload files using PUT; needs target URL & file name
+	nmap -p 80 --script http-put --script-args http-put.url='/dav/shell.php', http-put.file='./shell.php'
+

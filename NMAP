@@ -3,18 +3,15 @@ nmap <scan types> <options> <target specs -name/IP/URL/etc>
 sudo apt update && sudo apt install nmap   #update nmap and its scripts
 -------------------
 
-GOOD INITIAL SCANS
+INITIAL SCANS
+nmap -p- -T5 <target IP> -v   #all ports, lots of threads, verbose; will return open ports info; very noisy
 
-nmap -p- -T5 <target IP> -v   # initial scan, all ports, lots of threads, verbose; will return open ports info; very noisy - NahamSec
-
-nmap -p <specific port #'s> -A <target IP> -v   # second scan; aggessive; returns more info on the chosen ports - NahamSec
+nmap -p <specific port #'s> -A <target IP> -v   #returns more info on the chosen ports; agressive
 
 --------------------------
 
 -A   #aggressive; enables OS & version detection, script scanning and traceroute
-
 -sn <ip ranges>   #ping (ICMP) sweep; disables port scans; also sends a TCP SYN to p443 and TCP ACK to p80
-
 -v   #increase verbosity -- more v's equal more info
 
 MAIN SCAN TYPES                                   
